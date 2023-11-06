@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    contexts: prod, default
+
+hwk:
+  api-layer:
+    api-key: wJgC3d8nAzICVlwyJBIYDb0LxkFbKP5E
+    base-url: https://api.apilayer.com/fixer/

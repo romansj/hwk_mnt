@@ -1,0 +1,11 @@
+spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration,org.springframework.boot.autoconfigure.data.web.SpringDataWebAutoConfiguration
+  sql:
+    init:
+      mode: never
+
+hwk:
+  api-layer:
+    api-key: wJgC3d8nAzICVlwyJBIYDb0LxkFbKP5E
+    base-url: https://api.apilayer.com/fixer/
