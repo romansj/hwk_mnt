@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Balance.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.accounts.db</a> &gt; <span class="el_source">Balance.java</span></div><h1>Balance.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.accounts.db;
+
+import com.jromans.hwk.shared.constants.MintosCurrency;
+import com.jromans.hwk.transactions.TransactionData;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
+import java.math.BigDecimal;
+
+import static jakarta.persistence.EnumType.*;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(name = &quot;balance&quot;, uniqueConstraints = {@UniqueConstraint(columnNames = {&quot;account_account_number&quot;, &quot;currency&quot;})})
+public class Balance {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;account_account_number&quot;)
+    private Account account;
+
+    @Enumerated(STRING)
+    @Column(name = &quot;currency&quot;)
+    private MintosCurrency currency;
+
+    @Column(name = &quot;amount&quot;)
+    private BigDecimal amount;
+
+<span class="fc" id="L40">    public Balance(Account account, BigDecimal amount, MintosCurrency currency) {</span>
+<span class="fc" id="L41">        this.account = account;</span>
+<span class="fc" id="L42">        this.currency = currency;</span>
+<span class="fc" id="L43">        this.amount = amount;</span>
+<span class="fc" id="L44">    }</span>
+
+<span class="fc" id="L46">    public Balance(MintosCurrency currency, BigDecimal amount) {</span>
+<span class="fc" id="L47">        this.currency = currency;</span>
+<span class="fc" id="L48">        this.amount = amount;</span>
+<span class="fc" id="L49">    }</span>
+
+    public static BigDecimal getNewBalance(BigDecimal balance, TransactionData transaction) {
+<span class="fc" id="L52">        var amount = transaction.getAmount();</span>
+
+<span class="pc bpc" id="L54" title="1 of 3 branches missed.">        return switch (transaction.getTransactionType()) {</span>
+<span class="fc" id="L55">            case CREDIT -&gt; balance.add(amount);</span>
+<span class="fc" id="L56">            case DEBIT -&gt; balance.subtract(amount);</span>
+        };
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L62">        return new ToStringBuilder(this, ToStringStyle.JSON_STYLE)</span>
+<span class="fc" id="L63">                .append(&quot;id&quot;, id)</span>
+<span class="fc" id="L64">                .append(&quot;account&quot;, account.getAccountNumber())</span>
+<span class="fc" id="L65">                .append(&quot;currency&quot;, currency)</span>
+<span class="fc" id="L66">                .append(&quot;amount&quot;, amount)</span>
+<span class="fc" id="L67">                .toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

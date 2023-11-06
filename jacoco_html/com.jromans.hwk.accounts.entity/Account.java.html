@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Account.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.accounts.entity</a> &gt; <span class="el_source">Account.java</span></div><h1>Account.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.accounts.entity;
+
+import com.jromans.hwk.accounts.IAccount;
+import com.jromans.hwk.accounts.MintosCurrency;
+import com.jromans.hwk.customers.entity.Customer;
+import jakarta.persistence.*;
+import lombok.*;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+import static jakarta.persistence.CascadeType.ALL;
+import static jakarta.persistence.EnumType.STRING;
+import static java.math.BigDecimal.ZERO;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@With
+@Table(name = &quot;account&quot;)
+@Entity
+public class Account implements IAccount {
+    // todo generator
+    @Column
+    @Id
+    private String accountNumber;
+
+//    @ElementCollection(fetch = FetchType.EAGER)
+//    @CollectionTable(name = &quot;balances&quot;)
+//    @MapKeyColumn(name = &quot;key&quot;, length = 3)
+//    @MapKeyEnumerated(EnumType.STRING)
+//    @Column(name = &quot;value&quot;)
+//    private Map&lt;MintosCurrency, BigDecimal&gt; balances = new HashMap&lt;&gt;();
+
+    @OneToMany(cascade = ALL, mappedBy = &quot;account&quot;, fetch = FetchType.EAGER)
+    private List&lt;Balance&gt; balances = new ArrayList&lt;&gt;();
+
+    @Column
+    @Enumerated(STRING)
+    private MintosCurrency accountCurrency = MintosCurrency.EUR;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;cust_id&quot;, nullable = false)
+    private Customer customer;
+
+    public BigDecimal getBalanceInAccountCurrency() {
+<span class="fc" id="L51">        return getBalanceInCurrency(accountCurrency);</span>
+    }
+
+    public BigDecimal getBalanceInCurrency(MintosCurrency currency) {
+<span class="fc" id="L55">        return balances.stream()</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">                .filter(balance -&gt; balance.getCurrency() == currency)</span>
+<span class="fc" id="L57">                .findFirst()</span>
+<span class="fc" id="L58">                .map(Balance::getAmount)</span>
+<span class="fc" id="L59">                .orElse(ZERO);</span>
+        // return balances.getOrDefault(accountCurrency, ZERO);
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L65">        return ToStringBuilder.reflectionToString(this, ToStringStyle.JSON_STYLE);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FxRateServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.apilayer</a> &gt; <span class="el_source">FxRateServiceImpl.java</span></div><h1>FxRateServiceImpl.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.apilayer;
+
+import com.jromans.hwk.accounts.MintosCurrency;
+import lombok.AllArgsConstructor;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Profile;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
+
+@AllArgsConstructor
+@Profile({&quot;prod&quot;, &quot;itest&quot;, &quot;itest-prod&quot;})
+@Service
+public class FxRateServiceImpl implements FxService {
+
+    private final WebClient webClient;
+
+    @Cacheable(cacheNames = &quot;fx_rates&quot;) // todo clearing
+    @Override
+    public RateData getRate(MintosCurrency baseMintosCurrency, MintosCurrency outputMintosCurrency) {
+<span class="nc" id="L28">        var response = getRates(baseMintosCurrency, List.of(outputMintosCurrency));</span>
+<span class="nc" id="L29">        return getRateData(outputMintosCurrency, response);</span>
+    }
+
+    // todo could update multiple currencies at one time in the cache
+    private ExchangeRateResponse getRates(MintosCurrency baseMintosCurrency, List&lt;MintosCurrency&gt; outputCurrencies) {
+<span class="nc" id="L34">        var responseMono = webClient.get()</span>
+<span class="nc" id="L35">                .uri(uriBuilder -&gt; uriBuilder.pathSegment(Uri.RATES)</span>
+<span class="nc" id="L36">                        .queryParam(&quot;base&quot;, baseMintosCurrency)</span>
+<span class="nc" id="L37">                        .queryParam(&quot;symbols&quot;, outputCurrencies)</span>
+<span class="nc" id="L38">                        .build()</span>
+                )
+<span class="nc" id="L40">                .accept(MediaType.APPLICATION_JSON)</span>
+<span class="nc" id="L41">                .retrieve().bodyToMono(ExchangeRateResponse.class)</span>
+<span class="nc" id="L42">                .log();</span>
+
+
+<span class="nc" id="L45">        return responseMono.block(); // todo blocking</span>
+    }
+
+    @NotNull
+    private RateData getRateData(MintosCurrency outputMintosCurrency, ExchangeRateResponse response) {
+<span class="nc" id="L50">        BigDecimal rate = response.rates().get(outputMintosCurrency);</span>
+<span class="nc" id="L51">        LocalDateTime localDateTime = Instant.ofEpochMilli(response.timestamp()).atZone(ZoneId.systemDefault()).toLocalDateTime();</span>
+<span class="nc" id="L52">        RateData rateData = new RateData(rate, localDateTime);</span>
+<span class="nc" id="L53">        return rateData;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

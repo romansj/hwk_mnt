@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Data.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk</a> &gt; <span class="el_source">Data.java</span></div><h1>Data.java</h1><pre class="source lang-java linenums">package com.jromans.hwk;
+
+import com.jromans.hwk.accounts.entity.Account;
+import com.jromans.hwk.accounts.entity.Balance;
+import com.jromans.hwk.customers.entity.Customer;
+import com.jromans.hwk.transactions.constants.TransactionType;
+import com.jromans.hwk.transactions.db.*;
+import org.jetbrains.annotations.NotNull;
+
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.util.List;
+
+import static com.jromans.hwk.accounts.MintosCurrency.EUR;
+import static com.jromans.hwk.accounts.MintosCurrency.USD;
+import static com.jromans.hwk.transactions.constants.TransactionCategory.TRANSFER;
+import static com.jromans.hwk.transactions.db.PaymentType.EEA;
+import static java.math.BigDecimal.valueOf;
+
+<span class="nc" id="L20">public class Data {</span>
+    @Deprecated
+    @NotNull
+    public static Account getAccountX(String accountNumber) {
+<span class="fc" id="L24">        return getAccountWithCustomer().withAccountNumber(accountNumber);</span>
+    }
+
+    @NotNull
+    public static Account getAccount(String accountNumber) {
+<span class="fc" id="L29">        return new Account(accountNumber, List.of(), EUR, null);</span>
+    }
+
+    @NotNull
+    public static Request getRequest(Account accountSrc, Account accountDst, double amount) {
+<span class="fc" id="L34">        return getRequest(accountSrc.getAccountNumber(), accountDst.getAccountNumber(), amount);</span>
+    }
+
+    public static Request getRequest(String accountSrc, String accountDst, double amount) {
+<span class="fc" id="L38">        return getRequest()</span>
+<span class="fc" id="L39">                .withAccountSrc(accountSrc)</span>
+<span class="fc" id="L40">                .withAccountDst(accountDst)</span>
+<span class="fc" id="L41">                .withAmount(valueOf(amount));</span>
+    }
+
+    @NotNull
+    public static Request getRequest(Account accountSrc, Account accountDst) {
+<span class="fc" id="L46">        return getRequest(accountSrc, accountDst, 10);</span>
+    }
+
+    @NotNull
+    public static Transaction getTransaction(Account accountSrc, Account accountDst, double amount) {
+<span class="fc" id="L51">        Request request = getRequest(accountSrc, accountDst, amount).withCurrency(EUR);</span>
+<span class="fc" id="L52">        return Transaction.getTransaction(request, accountSrc, TransactionType.DEBIT);</span>
+    }
+
+    @NotNull
+    public static Request getRequest(double amount) {
+<span class="nc" id="L57">        return getRequest().withAmount(valueOf(amount));</span>
+    }
+
+    @NotNull
+    public static Request getRequest() {
+<span class="fc" id="L62">        return Request.builder()</span>
+<span class="fc" id="L63">                .requestId(1L)</span>
+<span class="fc" id="L64">                .accountDst(&quot;DST&quot;)</span>
+<span class="fc" id="L65">                .accountSrc(&quot;SRC&quot;)</span>
+<span class="fc" id="L66">                .bankDst(&quot;BANK_DST&quot;)</span>
+<span class="fc" id="L67">                .countryDst(Country.LATVIA)</span>
+<span class="fc" id="L68">                .amount(valueOf(100.25))</span>
+<span class="fc" id="L69">                .paymentDate(ZonedDateTime.now())</span>
+<span class="fc" id="L70">                .paymentType(EEA)</span>
+<span class="fc" id="L71">                .swift(&quot;MINTLV22&quot;)</span>
+<span class="fc" id="L72">                .dateTime(LocalDateTime.now())</span>
+<span class="fc" id="L73">                .category(TRANSFER)</span>
+<span class="fc" id="L74">                .currency(EUR)</span>
+<span class="fc" id="L75">                .status(Status.PENDING)</span>
+<span class="fc" id="L76">                .comissionCoverage(ComissionCoverage.DIVIDED)</span>
+<span class="fc" id="L77">                .description(&quot;Some trustworthy payment&quot;)</span>
+<span class="fc" id="L78">                .recipientName(&quot;RECIPIENT&quot;)</span>
+<span class="fc" id="L79">                .build();</span>
+    }
+
+    // todo wtf naming
+    @NotNull
+    public static Account getAccountWithCustomer() {
+<span class="fc" id="L85">        Customer customer = getCustomer();</span>
+<span class="fc" id="L86">        return getAccountWithCustomer(customer);</span>
+    }
+
+    @NotNull
+    private static Account getAccountWithCustomer(Customer customer) {
+<span class="fc" id="L91">        Account account = getAccountX(customer);</span>
+
+<span class="fc" id="L93">        List&lt;Balance&gt; balances = getBalances(account);</span>
+<span class="fc" id="L94">        account.setBalances(balances);</span>
+
+<span class="fc" id="L96">        customer.setAccounts(List.of(account));</span>
+
+<span class="fc" id="L98">        return account;</span>
+    }
+
+    @NotNull
+    private static List&lt;Balance&gt; getBalances(Account account) {
+<span class="fc" id="L103">        Balance balanceEur = new Balance(account, EUR, valueOf(500));</span>
+<span class="fc" id="L104">        Balance balanceUsd = new Balance(account, USD, valueOf(500));</span>
+<span class="fc" id="L105">        return List.of(balanceEur, balanceUsd);</span>
+    }
+
+    @NotNull
+    private static Account getAccountX(Customer customer) {
+<span class="fc" id="L110">        return new Account(&quot;ACC&quot;, List.of(), EUR, customer);</span>
+    }
+
+    @NotNull
+    public static Customer getCustomer(String customerName) {
+<span class="fc" id="L115">        return new Customer(customerName);</span>
+    }
+
+    @NotNull
+    public static Customer getCustomer() {
+<span class="fc" id="L120">        return new Customer(&quot;Customer Name&quot;, List.of());</span>
+    }
+
+    public static Balance getBalance(Account account, double amount) {
+<span class="fc" id="L124">        return new Balance(account, valueOf(amount));</span>
+    }
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

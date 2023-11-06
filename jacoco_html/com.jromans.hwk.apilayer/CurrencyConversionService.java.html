@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CurrencyConversionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.apilayer</a> &gt; <span class="el_source">CurrencyConversionService.java</span></div><h1>CurrencyConversionService.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.apilayer;
+
+import com.jromans.hwk.accounts.MintosCurrency;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import javax.naming.ServiceUnavailableException;
+import java.math.BigDecimal;
+
+@AllArgsConstructor
+<span class="fc" id="L12">@Slf4j</span>
+@Service
+public class CurrencyConversionService {
+    private final FxService fxService;
+
+    /**
+     * Any input and response validation goes here, while fetching data (real or fake) is done separately
+     *
+     * @param base
+     * @param output
+     * @return
+     */
+    public BigDecimal getRate(MintosCurrency base, MintosCurrency output) throws ServiceUnavailableException {
+<span class="fc bfc" id="L25" title="All 4 branches covered.">        if (base == null || output == null) {</span>
+<span class="fc" id="L26">            throw new IllegalArgumentException(&quot;Requested currency is null&quot;);</span>
+        }
+
+<span class="fc bfc" id="L29" title="All 2 branches covered.">        if (base == output) {</span>
+<span class="fc" id="L30">            throw new IllegalArgumentException(&quot;Requested output currency is the same as base&quot;);</span>
+        }
+
+<span class="fc" id="L33">        var rateData = fxService.getRate(base, output);</span>
+<span class="fc" id="L34">        var rate = rateData.rate();</span>
+
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">        if (rate == null) {</span>
+<span class="nc" id="L37">            log.error(&quot;Could not get rates from {} to {}&quot;, base, output);</span>
+<span class="nc" id="L38">            throw new ServiceUnavailableException(&quot;fxService returned null rates&quot;); // todo how to view &amp; implement resilience</span>
+        }
+
+<span class="fc" id="L41">        return rate;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

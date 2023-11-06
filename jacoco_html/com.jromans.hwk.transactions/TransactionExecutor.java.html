@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionExecutor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.transactions</a> &gt; <span class="el_source">TransactionExecutor.java</span></div><h1>TransactionExecutor.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.transactions;
+
+import com.jromans.hwk.accounts.db.Account;
+import com.jromans.hwk.accounts.db.AccountRepository;
+import com.jromans.hwk.accounts.db.Balance;
+import com.jromans.hwk.accounts.db.BalanceRepository;
+import com.jromans.hwk.shared.constants.MintosCurrency;
+import com.jromans.hwk.shared.constants.RequestStatus;
+import com.jromans.hwk.shared.constants.TransactionStatus;
+import com.jromans.hwk.transactions.db.RequestRepository;
+import com.jromans.hwk.transactions.db.Transaction;
+import com.jromans.hwk.transactions.db.TransactionRepository;
+import com.jromans.hwk.transactions.validation.TransactionValidator;
+import com.jromans.hwk.transactions.validation.exceptions.InsufficientFundsException;
+import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.stereotype.Component;
+
+import static java.math.BigDecimal.ZERO;
+
+<span class="fc" id="L23">@Slf4j</span>
+@AllArgsConstructor
+@Transactional
+@Component
+public class TransactionExecutor {
+    private final AccountRepository accountRepository;
+    private final RequestRepository requestRepository;
+    private final TransactionRepository transactionRepository;
+    private final BalanceRepository balanceRepository;
+
+
+    public void executeTransactions(Pair&lt;Transaction, Transaction&gt; transactions) throws InsufficientFundsException {
+<span class="fc" id="L35">        executeTransaction(transactions.getLeft());</span>
+<span class="fc" id="L36">        executeTransaction(transactions.getRight());</span>
+<span class="fc" id="L37">    }</span>
+
+    private void executeTransaction(Transaction transaction) throws InsufficientFundsException {
+<span class="fc" id="L40">        saveTransaction(transaction);</span>
+<span class="fc" id="L41">        updateBalance(transaction);</span>
+<span class="fc" id="L42">    }</span>
+
+    public void updateBalance(Transaction transaction) throws InsufficientFundsException {
+<span class="fc" id="L45">        saveNewBalance(transaction);</span>
+<span class="fc" id="L46">        transactionCompleted(transaction);</span>
+<span class="fc" id="L47">    }</span>
+
+    private void saveNewBalance(Transaction transaction) throws InsufficientFundsException {
+<span class="fc" id="L50">        var account = transaction.getAccount();</span>
+<span class="fc" id="L51">        var balance = getCurrentBalance(account, transaction.getCurrency());</span>
+
+<span class="fc" id="L53">        var balanceAmount = balance.getAmount();</span>
+<span class="fc" id="L54">        var newBalance = Balance.getNewBalance(balanceAmount, transaction);</span>
+<span class="fc" id="L55">        TransactionValidator.validateBalance(balanceAmount, transaction);</span>
+
+<span class="fc" id="L57">        balance.setAmount(newBalance);</span>
+<span class="fc" id="L58">        balanceRepository.save(balance);</span>
+
+<span class="fc" id="L60">        saveOrUpdateBalances(account, balance);</span>
+<span class="fc" id="L61">    }</span>
+
+    private void saveOrUpdateBalances(Account account, Balance balance) {
+<span class="fc" id="L64">        var balances = account.getBalances();</span>
+
+<span class="fc" id="L66">        int indexOf = balances.indexOf(balance);</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (indexOf != -1) {</span>
+<span class="fc" id="L68">            balances.remove(indexOf);</span>
+<span class="fc" id="L69">            balances.add(balance);</span>
+
+        } else {
+<span class="fc" id="L72">            balances.add(balance);</span>
+        }
+
+<span class="fc" id="L75">        account.setBalances(balances);</span>
+<span class="fc" id="L76">        accountRepository.save(account);</span>
+<span class="fc" id="L77">    }</span>
+
+
+    /**
+     * Gets current balance in account for specified currency.
+     * Creates empty balance if account doesn't have currency yet. // todo (reqs) need to limit currencies without creating new, e.g. a setting that prevents new-balance-creation for an account
+     *
+     * @param account
+     * @param currency
+     * @return
+     */
+    public Balance getCurrentBalance(Account account, MintosCurrency currency) {
+<span class="fc" id="L89">        String accountNumber = account.getAccountNumber();</span>
+
+<span class="fc" id="L91">        return balanceRepository</span>
+<span class="fc" id="L92">                .findByAccount_AccountNumberIgnoreCaseAndCurrency(accountNumber, currency)</span>
+<span class="fc" id="L93">                .orElseGet(() -&gt; {</span>
+<span class="fc" id="L94">                    log.warn(&quot;Balance not found for {}, currency {}&quot;, accountNumber, currency);</span>
+<span class="fc" id="L95">                    return new Balance(account, ZERO, currency);</span>
+                });
+    }
+
+    public void saveTransaction(Transaction transaction) {
+<span class="fc" id="L100">        transactionRepository.save(transaction);</span>
+<span class="fc" id="L101">    }</span>
+
+    private void transactionFailed(Transaction transaction, InsufficientFundsException e) {
+<span class="nc" id="L104">        finalizeTransaction(transaction, RequestStatus.REJECTED, TransactionStatus.FAILED);</span>
+<span class="nc" id="L105">    }</span>
+
+    public void transactionCompleted(Transaction transaction) {
+<span class="fc" id="L108">        finalizeTransaction(transaction, RequestStatus.COMPLETED, TransactionStatus.COMPLETED);</span>
+<span class="fc" id="L109">    }</span>
+
+    private void finalizeTransaction(Transaction transaction, RequestStatus requestStatus, TransactionStatus transactionStatus) {
+<span class="fc" id="L112">        var request = transaction.getRequest();</span>
+<span class="fc" id="L113">        request.setStatus(requestStatus);</span>
+<span class="fc" id="L114">        requestRepository.save(request);</span>
+
+<span class="fc" id="L116">        transaction.setTransactionStatus(transactionStatus); // todo where should this go</span>
+<span class="fc" id="L117">        saveTransaction(transaction);</span>
+<span class="fc" id="L118">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

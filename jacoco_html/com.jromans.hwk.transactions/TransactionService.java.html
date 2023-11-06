@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.transactions</a> &gt; <span class="el_source">TransactionService.java</span></div><h1>TransactionService.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.transactions;
+
+import com.jromans.hwk.accounts.AccountService;
+import com.jromans.hwk.accounts.db.Account;
+import com.jromans.hwk.configuration.mapping.MapStructMapper;
+import com.jromans.hwk.fx.CurrencyConversionService;
+import com.jromans.hwk.transactions.db.Request;
+import com.jromans.hwk.transactions.db.RequestRepository;
+import com.jromans.hwk.transactions.db.Transaction;
+import com.jromans.hwk.transactions.validation.TransactionRequestValidator;
+import com.jromans.hwk.transactions.validation.TransactionValidator;
+import com.jromans.hwk.transactions.validation.exceptions.*;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+
+import static com.jromans.hwk.shared.constants.TransactionType.CREDIT;
+import static com.jromans.hwk.shared.constants.TransactionType.DEBIT;
+import static com.jromans.hwk.transactions.db.Transaction.getTransaction;
+
+
+// Did not create delete mapping for payments to keep a history of all of them
+// If the payment is not accurate, it is not approved by user and stays in database as &quot;PENDING&quot;
+// Would probably schedule some job to update the auth requests which weren't authorised and set payments to &quot;REJECTED&quot;
+<span class="fc" id="L31">@Slf4j</span>
+@AllArgsConstructor
+@Transactional
+@Service
+public class TransactionService {
+
+    private final RequestRepository requestRepository;
+    private final AccountService accountService;
+    private final CurrencyConversionService conversionService;
+    private final TransactionExecutor transactionExecutor;
+
+
+    /**
+     * Validates money transfer request, stores in database,
+     * creates transactions (debit, credit) and validates those, calls TransactionExecutor to execute the transactions
+     *
+     * @param requestDTO Payment data
+     * @return Returns created Payment with any modifications, e.g., filled Id field
+     */
+    public TransactionResponseDTO newTransaction(@Valid SendRequestDTO requestDTO) throws InsufficientFundsException, IncompatibleCurrenciesException, AccountNotFoundException, MoneyNotGoingAnywhereException, NotConvertedException {
+<span class="fc" id="L51">        var request = saveRequest(requestDTO);</span>
+
+<span class="fc" id="L53">        validateCurrencies(request);</span>
+
+<span class="fc" id="L55">        var savedPayment = updateBalances(request);</span>
+
+<span class="fc" id="L57">        return MapStructMapper.INSTANCE.requestToDTO(savedPayment);</span>
+    }
+
+    /**
+     * Validates transfer request currency and destination account currency are compatible
+     * Checks if currency needs to be converted and converts from account base currency to transfer request currency
+     *
+     * @param request
+     */
+    private void validateCurrencies(Request request) throws IncompatibleCurrenciesException, InsufficientFundsException, AccountNotFoundException {
+<span class="fc" id="L67">        var accountDestination = getAccount(request.getAccountDst());</span>
+
+<span class="fc" id="L69">        TransactionValidator.validateDestinationAndTransactionCurrencyMatch(accountDestination, request); // calling the same method as in X</span>
+
+<span class="fc" id="L71">        convertCurrencyIfNeeded(request);</span>
+<span class="fc" id="L72">    }</span>
+
+
+    @NotNull
+    private Request updateBalances(Request request) throws InsufficientFundsException, NotConvertedException, MoneyNotGoingAnywhereException, AccountNotFoundException {
+<span class="fc" id="L77">        var accountOrigin = getAccount(request.getAccountSrc());</span>
+<span class="fc" id="L78">        var accountDestination = getAccount(request.getAccountDst());</span>
+
+<span class="fc" id="L80">        TransactionValidator.validate(request, accountOrigin, accountDestination); // as in X -- here</span>
+<span class="fc" id="L81">        log.info(&quot;Updating balances for request {}&quot;, request);</span>
+
+<span class="fc" id="L83">        executeTransactions(request);</span>
+
+<span class="fc" id="L85">        return requestRepository.save(request);</span>
+    }
+
+    private void executeTransactions(Request request) throws AccountNotFoundException, InsufficientFundsException {
+<span class="fc" id="L89">        var transactions = createTransactions(request);</span>
+<span class="fc" id="L90">        transactionExecutor.executeTransactions(transactions);</span>
+<span class="fc" id="L91">    }</span>
+
+
+    @NotNull
+    private Request saveRequest(SendRequestDTO requestDTO) {
+<span class="fc" id="L96">        TransactionRequestValidator.validate(requestDTO);</span>
+
+<span class="fc" id="L98">        var requestMapped = MapStructMapper.INSTANCE.dtoToRequest(requestDTO);</span>
+<span class="fc" id="L99">        return requestRepository.save(requestMapped);</span>
+    }
+
+
+    /**
+     * Convert main currency to transfer request currency
+     *
+     * @param request
+     * @throws InsufficientFundsException If there aren't enough funds in main currency of the account
+     */
+    private void convertCurrencyIfNeeded(Request request) throws InsufficientFundsException, AccountNotFoundException {
+<span class="fc" id="L110">        var accountOrigin = getAccount(request.getAccountSrc());</span>
+
+<span class="fc" id="L112">        var hasRequestedCurrency = TransactionValidator.validateAccountHasRequestedCurrency(accountOrigin, request);</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        if (hasRequestedCurrency) return;</span>
+
+<span class="fc" id="L115">        log.info(&quot;Account does not have enough requested currency&quot;);</span>
+
+<span class="fc" id="L117">        convert(request, accountOrigin);</span>
+<span class="fc" id="L118">    }</span>
+
+    private void convert(Request request, Account accountOrigin) throws AccountNotFoundException, InsufficientFundsException {
+<span class="fc" id="L121">        var conversionData = getConversionRequest(request);</span>
+<span class="fc" id="L122">        var fxRequests = getFxRequests(request, conversionData);</span>
+
+<span class="fc" id="L124">        var transactions = getTransactionPair(fxRequests, accountOrigin);</span>
+<span class="fc" id="L125">        transactionExecutor.executeTransactions(transactions);</span>
+<span class="fc" id="L126">    }</span>
+
+    @NotNull
+    private Pair&lt;Transaction, Transaction&gt; getTransactionPair(Pair&lt;Request, Request&gt; fxRequests, Account accountOrigin) {
+<span class="fc" id="L130">        var debitTrx = getTransaction(fxRequests.getLeft(), accountOrigin, DEBIT);</span>
+<span class="fc" id="L131">        var creditTrx = getTransaction(fxRequests.getRight(), accountOrigin, CREDIT);</span>
+
+<span class="fc" id="L133">        return Pair.of(debitTrx, creditTrx);</span>
+    }
+
+    private Pair&lt;Transaction, Transaction&gt; createTransactions(Request request) throws AccountNotFoundException {
+<span class="fc" id="L137">        var accountSrcId = request.getAccountSrc();</span>
+<span class="fc" id="L138">        var accountDstId = request.getAccountDst();</span>
+
+<span class="fc" id="L140">        var accountSrc = getAccount(accountSrcId);</span>
+<span class="fc" id="L141">        var accountDst = getAccount(accountDstId);</span>
+
+
+<span class="fc" id="L144">        var debit = getTransaction(request, accountSrc, DEBIT);</span>
+<span class="fc" id="L145">        var credit = getTransaction(request, accountDst, CREDIT);</span>
+<span class="fc" id="L146">        log.info(&quot;Created transactions,\ndebit {},\ncredit {}&quot;, debit, credit);</span>
+
+<span class="fc" id="L148">        return Pair.of(debit, credit);</span>
+    }
+
+    @NotNull
+    private Pair&lt;Request, Request&gt; getFxRequests(Request request, ConversionData conversionData) {
+<span class="fc" id="L153">        var fxRequestDebit = requestRepository.save(Request.getFxRequest(request, conversionData.accountCurrency(), conversionData.conversionAmount()));</span>
+<span class="fc" id="L154">        var fxRequestCredit = requestRepository.save(Request.getFxRequest(request, conversionData.requestCurrency(), conversionData.requestAmount()));</span>
+
+<span class="fc" id="L156">        return Pair.of(fxRequestDebit, fxRequestCredit);</span>
+    }
+
+    @NotNull
+    private ConversionData getConversionRequest(Request request) throws AccountNotFoundException {
+<span class="fc" id="L161">        var accountOrigin = getAccount(request.getAccountSrc());</span>
+
+<span class="fc" id="L163">        var accountCurrency = accountOrigin.getAccountCurrency();</span>
+<span class="fc" id="L164">        var requestCurrency = request.getCurrency();</span>
+<span class="fc" id="L165">        var requestAmount = request.getAmount();</span>
+
+<span class="fc" id="L167">        var rateToSrc = conversionService.getRate(requestCurrency, accountCurrency);</span>
+<span class="fc" id="L168">        var conversionAmount = rateToSrc.multiply(requestAmount);</span>
+
+
+<span class="fc" id="L171">        var srcBalance = accountOrigin.getBalanceInAccountCurrency();</span>
+<span class="fc" id="L172">        var newBalance = srcBalance.subtract(conversionAmount);</span>
+
+<span class="fc" id="L174">        log.info(&quot;Currency conversion needed. rateToSrc {}, conversionAmount {}, srcBalance {}, newBalance {}&quot;, rateToSrc, conversionAmount, srcBalance, newBalance);</span>
+<span class="fc" id="L175">        return new ConversionData(accountCurrency, requestCurrency, requestAmount, conversionAmount);</span>
+    }
+
+
+    public Page&lt;TransactionResponseDTO&gt; findTransactionsByAccountNumber(String accountNumber, Pageable pageable) {
+<span class="fc" id="L180">        var requests = requestRepository.findByAccountSrcIgnoreCase(accountNumber, pageable);</span>
+<span class="fc" id="L181">        return requests.map(MapStructMapper.INSTANCE::requestToDTO);</span>
+    }
+
+    private Account getAccount(String accountSrc) throws AccountNotFoundException {
+<span class="fc" id="L185">        return accountService.findByAccountNumber(accountSrc).orElseThrow(AccountNotFoundException::new);</span>
+    }
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Transaction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.transactions.db</a> &gt; <span class="el_source">Transaction.java</span></div><h1>Transaction.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.transactions.db;
+
+import com.jromans.hwk.accounts.db.Account;
+import com.jromans.hwk.shared.constants.MintosCurrency;
+import com.jromans.hwk.shared.constants.TransactionStatus;
+import com.jromans.hwk.shared.constants.TransactionType;
+import com.jromans.hwk.transactions.TransactionData;
+import jakarta.persistence.*;
+import lombok.*;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import static com.jromans.hwk.shared.constants.TransactionStatus.PENDING;
+import static jakarta.persistence.EnumType.STRING;
+
+/**
+ * The ledger
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true, setterPrefix = &quot;with&quot;)
+@With
+@Entity
+@Table(name = &quot;transaction&quot;)
+public class Transaction implements TransactionData {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long transactionId;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;account_number&quot;)
+    private Account account;
+
+    @Enumerated(STRING)
+    @Column
+    private TransactionType transactionType;
+
+    @Enumerated(STRING)
+    @Column
+    private TransactionStatus transactionStatus;
+
+    @Enumerated(STRING)
+    @Column(length = 3)
+    private MintosCurrency currency;
+
+    @Column
+    private BigDecimal amount;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;request_id&quot;)
+    private Request request;
+
+    @Builder.Default
+    @Column
+    private LocalDateTime dateTime = LocalDateTime.now();
+
+
+    public static Transaction getTransaction(Request request, Account account, TransactionType type) {
+<span class="fc" id="L65">        return Transaction.builder()</span>
+<span class="fc" id="L66">                .withRequest(request)</span>
+<span class="fc" id="L67">                .withCurrency(request.getCurrency())</span>
+<span class="fc" id="L68">                .withAmount(request.getAmount())</span>
+<span class="fc" id="L69">                .withAccount(account)</span>
+<span class="fc" id="L70">                .withTransactionType(type)</span>
+<span class="fc" id="L71">                .withTransactionStatus(PENDING)</span>
+<span class="fc" id="L72">                .build();</span>
+    }
+
+    public String getAccountNumber() {
+<span class="fc" id="L76">        return account.getAccountNumber();</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L81">        return new ToStringBuilder(this, ToStringStyle.JSON_STYLE)</span>
+<span class="fc" id="L82">                .append(&quot;transactionId&quot;, transactionId)</span>
+<span class="fc" id="L83">                .append(&quot;account&quot;, account.getAccountNumber())</span>
+<span class="fc" id="L84">                .append(&quot;transactionType&quot;, transactionType)</span>
+<span class="fc" id="L85">                .append(&quot;transactionStatus&quot;, transactionStatus)</span>
+<span class="fc" id="L86">                .append(&quot;currency&quot;, currency)</span>
+<span class="fc" id="L87">                .append(&quot;amount&quot;, amount)</span>
+<span class="fc" id="L88">                .append(&quot;request&quot;, request.getRequestId())</span>
+<span class="fc" id="L89">                .append(&quot;dateTime&quot;, dateTime)</span>
+<span class="fc" id="L90">                .toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

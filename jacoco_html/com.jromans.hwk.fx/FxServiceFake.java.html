@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FxServiceFake.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.fx</a> &gt; <span class="el_source">FxServiceFake.java</span></div><h1>FxServiceFake.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.fx;
+
+import com.jromans.hwk.shared.constants.MintosCurrency;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.math.BigDecimal.valueOf;
+
+<span class="fc" id="L15">@Slf4j</span>
+@ConditionalOnMissingBean(FxRateServiceImpl.class)
+@Component
+<span class="fc" id="L18">public class FxServiceFake implements FxService {</span>
+
+<span class="fc" id="L20">    private final LocalDateTime year1970 = LocalDateTime.of(1970, 1, 1, 0, 0, 0);</span>
+
+    @Override
+    public RateData getRate(MintosCurrency base, MintosCurrency output) {
+<span class="fc" id="L24">        var rates = getRates(base);</span>
+<span class="fc" id="L25">        log.info(&quot;Returning faked rates [base: {}], [output:{}] -- {}&quot;, base, output, rates);</span>
+<span class="fc" id="L26">        var rate = rates.get(output);</span>
+
+<span class="fc" id="L28">        return new RateData(base, output, rate, year1970);</span>
+    }
+
+    private Map&lt;MintosCurrency, BigDecimal&gt; getRates(MintosCurrency baseMintosCurrency) {
+
+<span class="fc bfc" id="L33" title="All 2 branches covered.">        if (baseMintosCurrency == MintosCurrency.EUR) {</span>
+<span class="fc" id="L34">            var rates = new HashMap&lt;MintosCurrency, BigDecimal&gt;();</span>
+<span class="fc" id="L35">            rates.put(MintosCurrency.USD, valueOf(1.0567640827));</span>
+<span class="fc" id="L36">            rates.put(MintosCurrency.GBP, valueOf(0.87));</span>
+<span class="fc" id="L37">            rates.put(MintosCurrency.DKK, valueOf(7.46));</span>
+<span class="fc" id="L38">            return rates;</span>
+
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        } else if (baseMintosCurrency == MintosCurrency.USD) {</span>
+<span class="fc" id="L41">            var rates = new HashMap&lt;MintosCurrency, BigDecimal&gt;();</span>
+<span class="fc" id="L42">            rates.put(MintosCurrency.EUR, valueOf(0.946285));</span>
+<span class="fc" id="L43">            rates.put(MintosCurrency.GBP, valueOf(0.823145));</span>
+<span class="fc" id="L44">            rates.put(MintosCurrency.DKK, valueOf(7.09));</span>
+<span class="fc" id="L45">            return rates;</span>
+        }
+
+
+<span class="fc" id="L49">        var rates = new HashMap&lt;MintosCurrency, BigDecimal&gt;();</span>
+<span class="fc" id="L50">        rates.put(MintosCurrency.USD, BigDecimal.valueOf(0.5));</span>
+<span class="fc" id="L51">        rates.put(MintosCurrency.GBP, BigDecimal.valueOf(0.5));</span>
+<span class="fc" id="L52">        rates.put(MintosCurrency.DKK, BigDecimal.valueOf(0.5));</span>
+<span class="fc" id="L53">        rates.put(MintosCurrency.CAD, BigDecimal.valueOf(0.5));</span>
+<span class="fc" id="L54">        rates.put(MintosCurrency.AUD, BigDecimal.valueOf(0.5));</span>
+<span class="fc" id="L55">        rates.put(MintosCurrency.EUR, BigDecimal.valueOf(0.5));</span>
+<span class="fc" id="L56">        return rates;</span>
+
+    }
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>

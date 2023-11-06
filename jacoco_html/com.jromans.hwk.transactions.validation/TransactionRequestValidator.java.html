@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionRequestValidator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">hwk</a> &gt; <a href="index.source.html" class="el_package">com.jromans.hwk.transactions.validation</a> &gt; <span class="el_source">TransactionRequestValidator.java</span></div><h1>TransactionRequestValidator.java</h1><pre class="source lang-java linenums">package com.jromans.hwk.transactions.validation;
+
+import com.jromans.hwk.configuration.exceptions.MyConstraintException;
+import com.jromans.hwk.configuration.exceptions.MyViolation;
+import com.jromans.hwk.configuration.mapping.ConstraintViolationMapper;
+import com.jromans.hwk.transactions.SendRequestDTO;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import org.hibernate.validator.HibernateValidator;
+import org.hibernate.validator.cfg.defs.DecimalMaxDef;
+import org.hibernate.validator.cfg.defs.DecimalMinDef;
+import org.hibernate.validator.cfg.defs.NotNullDef;
+
+import java.util.List;
+
+<span class="nc" id="L17">public class TransactionRequestValidator {</span>
+    private static Validator getValidator() {
+<span class="fc" id="L19">        var configuration = Validation</span>
+<span class="fc" id="L20">                .byProvider(HibernateValidator.class)</span>
+<span class="fc" id="L21">                .configure();</span>
+
+<span class="fc" id="L23">        var constraintMapping = configuration.createConstraintMapping();</span>
+
+<span class="fc" id="L25">        constraintMapping</span>
+<span class="fc" id="L26">                .type(SendRequestDTO.class)</span>
+<span class="fc" id="L27">                .field(&quot;currency&quot;)</span>
+<span class="fc" id="L28">                .constraint(new NotNullDef())</span>
+<span class="fc" id="L29">                .field(&quot;amount&quot;)</span>
+<span class="fc" id="L30">                .ignoreAnnotations(true)</span>
+<span class="fc" id="L31">                .constraint(new NotNullDef())</span>
+<span class="fc" id="L32">                .constraint(new DecimalMinDef().value(&quot;0.01&quot;).inclusive(true))</span>
+<span class="fc" id="L33">                .constraint(new DecimalMaxDef().value(&quot;1000000&quot;).inclusive(true));</span>
+
+<span class="fc" id="L35">        return configuration.addMapping(constraintMapping)</span>
+<span class="fc" id="L36">                .buildValidatorFactory()</span>
+<span class="fc" id="L37">                .getValidator();</span>
+    }
+
+    public static void validate(SendRequestDTO request) {
+<span class="fc" id="L41">        var constraintViolations = getValidator().validate(request);</span>
+<span class="fc" id="L42">        var myViolations = ConstraintViolationMapper.getViolations(new ConstraintViolationException(constraintViolations));</span>
+<span class="fc" id="L43">        validateMultipleFields(request, myViolations);</span>
+
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        if (!myViolations.isEmpty()) throw new MyConstraintException(myViolations);</span>
+<span class="fc" id="L46">    }</span>
+
+
+    /**
+     * Easier to implement this way than own Hibernate constraint, but means hardcoded path
+     *
+     * @param request      Money transfer request
+     * @param myViolations List of violations to append additional validation results
+     */
+    private static void validateMultipleFields(SendRequestDTO request, List&lt;MyViolation&gt; myViolations) {
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">        if (request.getAccountDst().equals(request.getAccountSrc())) {</span>
+<span class="nc" id="L57">            myViolations.add(new MyViolation(&quot;accountDestination&quot;, &quot;Destination and origin accounts cannot be the same&quot;));</span>
+        }
+<span class="fc" id="L59">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.9.202303310957</span></div></body></html>
